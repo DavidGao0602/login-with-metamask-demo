@@ -15,7 +15,6 @@ interface State {
 
 export const App = (): JSX.Element => {
 	const [state, setState] = useState<State>({});
-
 	useEffect(() => {
 		// Access token is stored in localstorage
 		const ls = window.localStorage.getItem(LS_KEY);
@@ -34,14 +33,12 @@ export const App = (): JSX.Element => {
 	};
 
 	const { auth } = state;
-
+	//console.log(this.props);
 	return (
 		<div className="App">
 			<header className="App-header">
 				<img src={logo} className="App-logo" alt="logo" />
-				<h1 className="App-title">
-					Welcome to Login with MetaMask Demo
-				</h1>
+				<h1 className="App-title">Welcome to PokerFace</h1>
 			</header>
 			<div className="App-intro">
 				{auth ? (

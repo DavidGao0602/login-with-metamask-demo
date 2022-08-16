@@ -3,6 +3,7 @@ import path from 'path';
 import { INTEGER, Sequelize, STRING } from 'sequelize';
 
 import { User } from './models';
+import { AddressModel } from './models';
 
 const sequelize = new Sequelize('login-with-metamask-database', '', undefined, {
 	dialect: 'sqlite',
@@ -36,7 +37,30 @@ User.init(
 	}
 );
 
+AddressModel.init(
+	{
+		address: {
+			allowNull: false,
+			type: STRING,
+			unique: false,
+			validate: { isLowercase: true },
+		},
+		discordId: {
+			type: STRING,
+			unique: false,
+		},
+	},
+	{
+		modelName: 'address',
+		sequelize, // This bit is important
+		timestamps: false,
+	}
+);
+
 // Create new tables
 sequelize.sync();
 
 export { sequelize };
+
+
+

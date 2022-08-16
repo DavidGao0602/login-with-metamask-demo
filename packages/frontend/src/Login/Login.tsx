@@ -11,8 +11,22 @@ interface Props {
 
 let web3: Web3 | undefined = undefined; // Will hold the web3 instance
 
+function getQueryVariable(variable: string) {
+	const query = window.location.search.substring(1);
+	const vars = query.split('&');
+	for (let i = 0; i < vars.length; i++) {
+		const pair = vars[i].split('=');
+		if (pair[0] == variable) {
+			return pair[1];
+		}
+	}
+	return false;
+}
+
 export const Login = ({ onLoggedIn }: Props): JSX.Element => {
 	const [loading, setLoading] = useState(false); // Loading button state
+	const discordId = getQueryVariable('a');
+	console.log(discordId);
 
 	const handleAuthenticate = ({
 		publicAddress,
@@ -88,6 +102,7 @@ export const Login = ({ onLoggedIn }: Props): JSX.Element => {
 		}
 
 		const publicAddress = coinbase.toLowerCase();
+		const address = coinbase.toLowerCase();
 		setLoading(true);
 
 		// Look if user with current publicAddress is already present on backend
@@ -108,25 +123,26 @@ export const Login = ({ onLoggedIn }: Props): JSX.Element => {
 			.catch((err) => {
 				window.alert(err);
 				setLoading(false);
-			});
+			})
+			.finally(() =>
+				fetch(`${process.env.REACT_APP_BACKEND_URL}/address`, {
+					body: JSON.stringify({
+						discordId,
+						address,
+					}),
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					method: 'POST',
+				})
+			);
 	};
 
 	return (
 		<div>
-			<p>
-				Please select your login method.
-				<br />
-				For the purpose of this demo, only MetaMask login is
-				implemented.
-			</p>
+			<p>Please select your login method.</p>
 			<button className="Login-button Login-mm" onClick={handleClick}>
 				{loading ? 'Loading...' : 'Login with MetaMask'}
-			</button>
-			<button className="Login-button Login-fb" disabled>
-				Login with Facebook
-			</button>
-			<button className="Login-button Login-email" disabled>
-				Login with Email
 			</button>
 		</div>
 	);
