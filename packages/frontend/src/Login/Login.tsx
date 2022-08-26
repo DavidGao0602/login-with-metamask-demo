@@ -73,7 +73,7 @@ export const Login = ({ onLoggedIn }: Props): JSX.Element => {
 		}*/
 		const provider = await detectEthereumProvider();
 
-		if (provider && !isMobile()) {
+		if (provider) {
 			const { ethereum } = window;
 			let currentAccount = '';
 			if (ethereum && ethereum.isMetaMask) {
