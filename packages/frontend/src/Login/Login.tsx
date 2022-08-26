@@ -2,8 +2,11 @@ import './Login.css';
 
 import React, { useState } from 'react';
 import Web3 from 'web3';
+import detectEthereumProvider from '@metamask/detect-provider';
+import EthereumProvider from '@metamask/detect-provider';
 
 import { Auth } from '../types';
+import { getQueryVariable, isMobile, openMetaMaskUrl } from '../utils';
 
 interface Props {
 	onLoggedIn: (auth: Auth) => void;
@@ -11,22 +14,9 @@ interface Props {
 
 let web3: Web3 | undefined = undefined; // Will hold the web3 instance
 
-function getQueryVariable(variable: string) {
-	const query = window.location.search.substring(1);
-	const vars = query.split('&');
-	for (let i = 0; i < vars.length; i++) {
-		const pair = vars[i].split('=');
-		if (pair[0] == variable) {
-			return pair[1];
-		}
-	}
-	return false;
-}
-
 export const Login = ({ onLoggedIn }: Props): JSX.Element => {
 	const [loading, setLoading] = useState(false); // Loading button state
 	const discordId = getQueryVariable('a');
-	console.log(discordId);
 
 	const handleAuthenticate = ({
 		publicAddress,
@@ -74,74 +64,125 @@ export const Login = ({ onLoggedIn }: Props): JSX.Element => {
 			method: 'POST',
 		}).then((response) => response.json());
 
-	const handleClick = async () => {
+	const handleClickMetaMask = async () => {
 		// Check if MetaMask is installed
+		/*
 		if (!(window as any).ethereum) {
 			window.alert('Please install MetaMask first.');
 			return;
+		}*/
+		const provider = await detectEthereumProvider();
+
+		if (provider && !isMobile()) {
+			const { ethereum } = window;
+			let currentAccount = '';
+			if (ethereum && ethereum.isMetaMask) {
+				console.log('Ethereum successfully detected!');
+				// Access the decentralized web!
+				if (!web3) {
+					web3 = new Web3(ethereum as any);
+				}
+				// (ethereum as any).enable();
+				/*
+				const accounts = (ethereum as any).request({
+					method: 'eth_requestAccounts',
+				});*/
+				/*(ethereum as any)
+					.request({
+						method: 'eth_requestAccounts',
+					})*/
+				web3.eth
+					.requestAccounts()
+					.then((accounts: any) => {
+						console.log(accounts);
+						if (accounts.length === 0) {
+							// MetaMask is locked or the user has not connected any accounts
+							console.log('Please connect to MetaMask.');
+						} else {
+							currentAccount = accounts[0].toLowerCase();
+						}
+						console.log(currentAccount);
+						return currentAccount;
+					})
+					.then(handleEthereum);
+			} else {
+				console.log('Please install MetaMask!');
+			}
+		} else if (isMobile()) {
+			openMetaMaskUrl(
+				'https://metamask.app.link/dapp/bot.pokerface.com?a=' +
+					discordId
+			);
+		} else {
+			window.alert('Please install MetaMask!');
+		}
+
+		function handleEthereum(currentAccount: string) {
+			const publicAddress = currentAccount;
+			const address = currentAccount;
+			setLoading(true);
+			console.log(publicAddress);
+			// Look if user with current publicAddress is already present on backend
+			fetch(
+				`${process.env.REACT_APP_BACKEND_URL}/users?publicAddress=${publicAddress}`
+			)
+				.then((response) => response.json())
+				// If yes, retrieve it. If no, create it.
+				.then((users) =>
+					users.length ? users[0] : handleSignup(publicAddress)
+				)
+				// Popup MetaMask confirmation modal to sign message
+				.then(handleSignMessage)
+				// Send signature to backend on the /auth route
+				.then(handleAuthenticate)
+				// Pass accessToken back to parent component (to save it in localStorage)
+				.then(onLoggedIn)
+				.catch((err) => {
+					window.alert(err);
+					setLoading(false);
+				})
+				.finally(() =>
+					fetch(`${process.env.REACT_APP_BACKEND_URL}/address`, {
+						body: JSON.stringify({
+							discordId,
+							address,
+						}),
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						method: 'POST',
+					})
+				);
 		}
 
 		if (!web3) {
 			try {
 				// Request account access if needed
-				await (window as any).ethereum.enable();
 
 				// We don't know window.web3 version, so we use our own instance of Web3
 				// with the injected provider given by MetaMask
-				web3 = new Web3((window as any).ethereum);
+				// web3 = new Web3((window as any).ethereum);
+				web3 = new Web3(provider as any);
 			} catch (error) {
 				window.alert('You need to allow MetaMask.');
 				return;
 			}
 		}
-
+		/*
 		const coinbase = await web3.eth.getCoinbase();
 		if (!coinbase) {
 			window.alert('Please activate MetaMask first.');
 			return;
-		}
-
-		const publicAddress = coinbase.toLowerCase();
-		const address = coinbase.toLowerCase();
-		setLoading(true);
-
-		// Look if user with current publicAddress is already present on backend
-		fetch(
-			`${process.env.REACT_APP_BACKEND_URL}/users?publicAddress=${publicAddress}`
-		)
-			.then((response) => response.json())
-			// If yes, retrieve it. If no, create it.
-			.then((users) =>
-				users.length ? users[0] : handleSignup(publicAddress)
-			)
-			// Popup MetaMask confirmation modal to sign message
-			.then(handleSignMessage)
-			// Send signature to backend on the /auth route
-			.then(handleAuthenticate)
-			// Pass accessToken back to parent component (to save it in localStorage)
-			.then(onLoggedIn)
-			.catch((err) => {
-				window.alert(err);
-				setLoading(false);
-			})
-			.finally(() =>
-				fetch(`${process.env.REACT_APP_BACKEND_URL}/address`, {
-					body: JSON.stringify({
-						discordId,
-						address,
-					}),
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					method: 'POST',
-				})
-			);
+		}*/
 	};
 
 	return (
 		<div>
 			<p>Please select your login method.</p>
-			<button className="Login-button Login-mm" onClick={handleClick}>
+			<button
+				className="Login-button Login-mm"
+				onClick={handleClickMetaMask}
+			>
 				{loading ? 'Loading...' : 'Login with MetaMask'}
 			</button>
 		</div>
